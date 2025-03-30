@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Chatbot</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 100px);
+        }
+        
+        .topic-selector {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            background-color: white;
+            border-radius: 8px 8px 0 0;
+            padding: 15px;
+            margin-bottom: 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .input-area {
+            display: flex;
+            padding: 10px;
+            background-color: white;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        #message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        #send-button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        #send-button:hover {
+            background-color: #45a049;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .user-message {
+            align-self: flex-end;
+            background-color: #e3f2fd;
+            margin-left: auto;
+        }
+        
+        .bot-message {
+            align-self: flex-start;
+            background-color: #f1f1f1;
+            margin-right: auto;
+        }
+        
+        .message-container {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        
+        .message-role {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        
+        .control-button {
+            padding: 8px 15px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .control-button:hover {
+            background-color: #0b7dda;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+        
+        #topic-select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Japanese Chatbot</h1>
+    
+    <div class="container">
+        <div class="topic-selector">
+            <select id="topic-select">
+                <option value="">-- Select a topic --</option>
+            </select>
+            <button id="start-chat" class="control-button">Start Chat</button>
+        </div>
+        
+        <div class="chat-container">
+            <div id="chat-messages" class="chat-messages">
+                <div class="loading">Please select a topic and start a chat.</div>
+            </div>
+            
+            <div class="input-area">
+                <input type="text" id="message-input" placeholder="Type your message..." disabled>
+                <button id="send-button" disabled>Send</button>
+            </div>
+            
+            <div class="controls">
+                <button id="view-history" class="control-button" disabled>View History</button>
+                <button id="end-session" class="control-button" disabled>End Session</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // API endpoint
+        const API_URL = '/api';
+        let currentSessionId = null;
+        
+        // DOM elements
+        const topicSelect = document.getElementById('topic-select');
+        const startChatButton = document.getElementById('start-chat');
+        const chatMessages = document.getElementById('chat-messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const viewHistoryButton = document.getElementById('view-history');
+        const endSessionButton = document.getElementById('end-session');
+        
+        // Load topics when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                chatMessages.innerHTML = '<div class="loading">Loading topics...</div>';
+                const response = await fetch(`${API_URL}/topics`);
+                const topics = await response.json();
+                
+                // Clear default option
+                topicSelect.innerHTML = '<option value="">-- Select a topic --</option>';
+                
+                // Add topics to dropdown
+                topics.forEach(topic => {
+                    const option = document.createElement('option');
+                    option.value = topic.id;
+                    option.textContent = `${topic.name} - ${topic.summary}`;
+                    topicSelect.appendChild(option);
+                });
+                
+                chatMessages.innerHTML = '<div class="loading">Please select a topic and start a chat.</div>';
+            } catch (error) {
+                console.error('Error loading topics:', error);
+                chatMessages.innerHTML = '<div class="loading" style="color: red;">Error loading topics. Please try again later.</div>';
+            }
+        });
+        
+        // Start chat button click
+        startChatButton.addEventListener('click', async () => {
+            const selectedTopic = topicSelect.value;
+            if (!selectedTopic) {
+                alert('Please select a topic');
+                return;
+            }
+            
+            try {
+                chatMessages.innerHTML = '<div class="loading">Starting chat...</div>';
+                
+                // End previous session if exists
+                if (currentSessionId) {
+                    await fetch(`${API_URL}/sessions/${currentSessionId}`, {
+                        method: 'DELETE'
+                    });
+                }
+                
+                // Create new session
+                const response = await fetch(`${API_URL}/sessions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ topicId: selectedTopic })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to create session');
+                }
+                
+                const session = await response.json();
+                currentSessionId = session.sessionId;
+                
+                // Enable chat controls
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                viewHistoryButton.disabled = false;
+                endSessionButton.disabled = false;
+                
+                // Clear chat area and show welcome message
+                chatMessages.innerHTML = '';
+                addMessage(session.messages[0], 'bot');
+                
+                // Focus on input
+                messageInput.focus();
+            } catch (error) {
+                console.error('Error starting chat:', error);
+                chatMessages.innerHTML = '<div class="loading" style="color: red;">Error starting chat. Please try again later.</div>';
+            }
+        });
+        
+        // Send message
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        
+        async function sendMessage() {
+            if (!currentSessionId) return;
+            
+            const content = messageInput.value.trim();
+            if (!content) return;
+            
+            // Add user message to chat
+            addMessage({ role: 'user', content }, 'user');
+            
+            // Clear input
+            messageInput.value = '';
+            
+            try {
+                // Send message to API
+                const response = await fetch(`${API_URL}/sessions/${currentSessionId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ content })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to send message');
+                }
+                
+                const result = await response.json();
+                
+                // Add bot response to chat
+                addMessage(result.messages[1], 'bot');
+                
+                // Scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } catch (error) {
+                console.error('Error sending message:', error);
+                addMessage({ 
+                    role: 'assistant',
+                    content: 'すみません、エラーが発生しました。もう一度お試しください。'
+                }, 'bot');
+            }
+        }
+        
+        // View history
+        viewHistoryButton.addEventListener('click', async () => {
+            if (!currentSessionId) return;
+            
+            try {
+                // Get session history
+                const response = await fetch(`${API_URL}/sessions/${currentSessionId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to get history');
+                }
+                
+                const session = await response.json();
+                
+                // Clear chat area and show all messages
+                chatMessages.innerHTML = '';
+                session.messages.forEach(message => {
+                    addMessage(message, message.role === 'user' ? 'user' : 'bot');
+                });
+                
+                // Scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } catch (error) {
+                console.error('Error getting history:', error);
+                alert('Error retrieving conversation history');
+            }
+        });
+        
+        // End session
+        endSessionButton.addEventListener('click', async () => {
+            if (!currentSessionId) return;
+            
+            try {
+                await fetch(`${API_URL}/sessions/${currentSessionId}`, {
+                    method: 'DELETE'
+                });
+                
+                currentSessionId = null;
+                
+                // Disable chat controls
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+                viewHistoryButton.disabled = true;
+                endSessionButton.disabled = true;
+                
+                // Show end message
+                chatMessages.innerHTML = '<div class="loading">Chat session ended. Select a topic and start a new chat.</div>';
+            } catch (error) {
+                console.error('Error ending session:', error);
+                alert('Error ending session');
+            }
+        });
+        
+        // Helper to add message to chat
+        function addMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message-container';
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = `message ${type}-message`;
+            
+            const roleSpan = document.createElement('div');
+            roleSpan.className = 'message-role';
+            roleSpan.textContent = type === 'user' ? 'You:' : 'AI:';
+            
+            const contentP = document.createElement('p');
+            contentP.textContent = message.content;
+            
+            messageContent.appendChild(roleSpan);
+            messageContent.appendChild(contentP);
+            messageDiv.appendChild(messageContent);
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    </script>
+</body>
+</html> 
