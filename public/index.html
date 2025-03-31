@@ -188,10 +188,29 @@
         .error-message {
             color: #dc3545;
             background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
             padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .topic-reselect {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .topic-reselect button {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .topic-reselect button:hover {
+            background-color: #5a6268;
         }
 
         /* Markdown styles */
@@ -398,6 +417,43 @@
             messageDiv.appendChild(timeDiv);
             
             chatMessagesDiv.appendChild(messageDiv);
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+
+            // Check if the message indicates unknown answer
+            if (message.role === 'assistant' && 
+                (message.content.includes("don't have information about that") || 
+                 message.content.includes("その質問についての情報がありません"))) {
+                addTopicReselectButton();
+            }
+        }
+        
+        // Add topic reselect button
+        function addTopicReselectButton() {
+            // Remove existing reselect button if any
+            const existingButton = document.querySelector('.topic-reselect');
+            if (existingButton) {
+                existingButton.remove();
+            }
+
+            // Create new reselect button
+            const reselectDiv = document.createElement('div');
+            reselectDiv.className = 'topic-reselect';
+            
+            const reselectButton = document.createElement('button');
+            reselectButton.textContent = 'Select Different Topic';
+            reselectButton.onclick = () => {
+                // Reset chat state
+                chatMessages = [];
+                currentTopicId = null;
+                chatMessagesDiv.innerHTML = '<div class="loading">Please select a topic and start a chat.</div>';
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+                topicSelect.value = '';
+                topicSelect.focus();
+            };
+            
+            reselectDiv.appendChild(reselectButton);
+            chatMessagesDiv.appendChild(reselectDiv);
             chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
         }
         

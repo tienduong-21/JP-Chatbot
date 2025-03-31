@@ -154,8 +154,8 @@ Please follow these guidelines:
      * Use - or * for lists
      * Use # for headings
 4. If you don't know the answer:
-   - English: "I'm sorry, I don't have information about that."
-   - Japanese: "すみません、その質問についての情報がありません"
+   - English: "I'm sorry, I don't have information about that. Would you like to try a different topic?"
+   - Japanese: "すみません、その質問についての情報がありません。別のトピックをお試しになりますか？"
 5. Keep responses concise, aiming for 300 characters or less
 
 Previous conversation:
