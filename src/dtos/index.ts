@@ -21,21 +21,14 @@ export interface CreateTopicDto {
 }
 
 /**
- * DTO for creating a new session
+ * DTO for starting a new chat
  */
-export interface CreateSessionDto {
+export interface StartChatDto {
   topicId: string;
 }
 
 /**
- * DTO for sending a message in a session
- */
-export interface SendMessageDto {
-  content: string;
-}
-
-/**
- * DTO for a chat message
+ * DTO for chat message
  */
 export interface ChatMessageDto {
   role: 'user' | 'assistant';
@@ -43,15 +36,12 @@ export interface ChatMessageDto {
 }
 
 /**
- * DTO for session response
+ * DTO for sending a message
  */
-export interface SessionDto {
-  sessionId: string;
-  topic: {
-    id: string;
-    name: string;
-  };
+export interface SendMessageDto {
+  topicId: string;
   messages: ChatMessageDto[];
+  content: string;
 }
 
 /**

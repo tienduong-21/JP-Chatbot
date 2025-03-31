@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Japanese Chatbot</title>
+    <!-- Add marked library for markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Add highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -23,126 +28,292 @@
             display: flex;
             flex-direction: column;
             height: calc(100vh - 100px);
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
         
         .topic-selector {
-            background-color: white;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
         }
         
         .chat-container {
             display: flex;
             flex-direction: column;
             flex: 1;
+            overflow: hidden;
         }
         
         .chat-messages {
             flex: 1;
             overflow-y: auto;
-            background-color: white;
-            border-radius: 8px 8px 0 0;
-            padding: 15px;
-            margin-bottom: 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 20px;
+            background-color: #fff;
         }
         
         .input-area {
             display: flex;
-            padding: 10px;
-            background-color: white;
-            border-radius: 0 0 8px 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #e9ecef;
         }
         
         #message-input {
             flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
             font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        #message-input:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
         }
         
         #send-button {
-            padding: 10px 20px;
-            background-color: #4CAF50;
+            padding: 12px 24px;
+            background-color: #007bff;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             margin-left: 10px;
             cursor: pointer;
             font-size: 14px;
+            transition: background-color 0.2s;
         }
         
         #send-button:hover {
-            background-color: #45a049;
+            background-color: #0056b3;
+        }
+        
+        #send-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
         }
         
         .message {
-            margin-bottom: 15px;
-            padding: 10px 15px;
-            border-radius: 10px;
+            margin-bottom: 20px;
             max-width: 80%;
+            position: relative;
+        }
+        
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 12px;
+            position: relative;
             word-wrap: break-word;
         }
         
         .user-message {
-            align-self: flex-end;
-            background-color: #e3f2fd;
             margin-left: auto;
         }
         
-        .bot-message {
-            align-self: flex-start;
-            background-color: #f1f1f1;
-            margin-right: auto;
+        .user-message .message-content {
+            background-color: #007bff;
+            color: white;
+            border-bottom-right-radius: 4px;
         }
         
-        .message-container {
-            display: flex;
-            margin-bottom: 15px;
+        .bot-message .message-content {
+            background-color: #e9ecef;
+            color: #212529;
+            border-bottom-left-radius: 4px;
         }
         
         .message-role {
-            font-weight: bold;
-            margin-bottom: 5px;
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            color: #adb5bd;
+            margin-top: 4px;
+            text-align: right;
+        }
+        
+        .message-status {
+            position: absolute;
+            right: -20px;
+            bottom: 0;
+            font-size: 12px;
+            color: #6c757d;
         }
         
         .controls {
             display: flex;
-            justify-content: space-between;
+            gap: 10px;
             margin-top: 10px;
         }
         
         .control-button {
-            padding: 8px 15px;
-            background-color: #2196F3;
+            padding: 10px 20px;
+            background-color: #007bff;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
         }
         
         .control-button:hover {
-            background-color: #0b7dda;
+            background-color: #0056b3;
         }
         
         .loading {
             text-align: center;
             padding: 20px;
+            color: #6c757d;
             font-style: italic;
-            color: #666;
         }
         
         #topic-select {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
             font-size: 14px;
             margin-bottom: 10px;
+            background-color: white;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        /* Markdown styles */
+        .message-content h1,
+        .message-content h2,
+        .message-content h3,
+        .message-content h4,
+        .message-content h5,
+        .message-content h6 {
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+
+        .message-content p {
+            margin-bottom: 1em;
+        }
+
+        .message-content code {
+            background-color: rgba(0,0,0,0.1);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .message-content pre {
+            background-color: #f8f9fa;
+            padding: 1em;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        .message-content pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        .message-content blockquote {
+            margin: 1em 0;
+            padding-left: 1em;
+            border-left: 4px solid #dee2e6;
+            color: #6c757d;
+        }
+
+        .message-content ul,
+        .message-content ol {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+
+        .message-content li {
+            margin-bottom: 0.5em;
+        }
+
+        .message-content table {
+            width: 100%;
+            margin: 1em 0;
+            border-collapse: collapse;
+        }
+
+        .message-content th,
+        .message-content td {
+            padding: 0.5em;
+            border: 1px solid #dee2e6;
+        }
+
+        .message-content th {
+            background-color: #f8f9fa;
+        }
+
+        /* Dark theme for code blocks */
+        .message-content pre {
+            background-color: #282c34;
+            color: #abb2bf;
+        }
+
+        .message-content pre code {
+            color: #abb2bf;
+        }
+
+        /* User message markdown styles */
+        .user-message .message-content {
+            color: white;
+        }
+
+        .user-message .message-content code {
+            background-color: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .user-message .message-content pre {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .user-message .message-content pre code {
+            color: white;
+        }
+
+        .user-message .message-content blockquote {
+            border-left-color: rgba(255,255,255,0.5);
+            color: rgba(255,255,255,0.8);
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                height: calc(100vh - 20px);
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+            
+            .input-area {
+                padding: 10px;
+            }
         }
     </style>
 </head>
@@ -166,33 +337,75 @@
                 <input type="text" id="message-input" placeholder="Type your message..." disabled>
                 <button id="send-button" disabled>Send</button>
             </div>
-            
-            <div class="controls">
-                <button id="view-history" class="control-button" disabled>View History</button>
-                <button id="end-session" class="control-button" disabled>End Session</button>
-            </div>
         </div>
     </div>
     
     <script>
+        // Configure marked options
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            breaks: true,
+            gfm: true
+        });
+
         // API endpoint
-        const API_URL = '/api';
-        let currentSessionId = null;
+        const API_URL = '';
+        let currentTopicId = null;
+        let chatMessages = [];
         
         // DOM elements
         const topicSelect = document.getElementById('topic-select');
         const startChatButton = document.getElementById('start-chat');
-        const chatMessages = document.getElementById('chat-messages');
+        const chatMessagesDiv = document.getElementById('chat-messages');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
-        const viewHistoryButton = document.getElementById('view-history');
-        const endSessionButton = document.getElementById('end-session');
+        
+        // Format timestamp
+        function formatTimestamp() {
+            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        // Add message to chat
+        function addMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${message.role}-message`;
+            
+            const roleDiv = document.createElement('div');
+            roleDiv.className = 'message-role';
+            roleDiv.textContent = message.role === 'user' ? 'You' : 'Assistant';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            // Parse markdown and set HTML content
+            contentDiv.innerHTML = marked.parse(message.content);
+            
+            // Apply syntax highlighting to code blocks
+            contentDiv.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightBlock(block);
+            });
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = formatTimestamp();
+            
+            messageDiv.appendChild(roleDiv);
+            messageDiv.appendChild(contentDiv);
+            messageDiv.appendChild(timeDiv);
+            
+            chatMessagesDiv.appendChild(messageDiv);
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+        }
         
         // Load topics when page loads
         window.addEventListener('DOMContentLoaded', async () => {
             try {
-                chatMessages.innerHTML = '<div class="loading">Loading topics...</div>';
-                const response = await fetch(`${API_URL}/topics`);
+                chatMessagesDiv.innerHTML = '<div class="loading">Loading topics...</div>';
+                const response = await fetch(`${API_URL}/api/topics`);
                 const topics = await response.json();
                 
                 // Clear default option
@@ -202,14 +415,14 @@
                 topics.forEach(topic => {
                     const option = document.createElement('option');
                     option.value = topic.id;
-                    option.textContent = `${topic.name} - ${topic.summary}`;
+                    option.textContent = topic.name;
                     topicSelect.appendChild(option);
                 });
                 
-                chatMessages.innerHTML = '<div class="loading">Please select a topic and start a chat.</div>';
+                chatMessagesDiv.innerHTML = '<div class="loading">Please select a topic and start a chat.</div>';
             } catch (error) {
                 console.error('Error loading topics:', error);
-                chatMessages.innerHTML = '<div class="loading" style="color: red;">Error loading topics. Please try again later.</div>';
+                chatMessagesDiv.innerHTML = '<div class="error-message">Error loading topics. Please try again later.</div>';
             }
         });
         
@@ -222,17 +435,12 @@
             }
             
             try {
-                chatMessages.innerHTML = '<div class="loading">Starting chat...</div>';
+                chatMessagesDiv.innerHTML = '<div class="loading">Starting chat...</div>';
+                messageInput.disabled = true;
+                sendButton.disabled = true;
                 
-                // End previous session if exists
-                if (currentSessionId) {
-                    await fetch(`${API_URL}/sessions/${currentSessionId}`, {
-                        method: 'DELETE'
-                    });
-                }
-                
-                // Create new session
-                const response = await fetch(`${API_URL}/sessions`, {
+                // Start new chat
+                const response = await fetch(`${API_URL}/api/chat/start`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -241,56 +449,55 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error('Failed to create session');
+                    throw new Error('Failed to start chat');
                 }
                 
-                const session = await response.json();
-                currentSessionId = session.sessionId;
+                const result = await response.json();
+                currentTopicId = selectedTopic;
+                chatMessages = result.messages;
                 
                 // Enable chat controls
                 messageInput.disabled = false;
                 sendButton.disabled = false;
-                viewHistoryButton.disabled = false;
-                endSessionButton.disabled = false;
                 
                 // Clear chat area and show welcome message
-                chatMessages.innerHTML = '';
-                addMessage(session.messages[0], 'bot');
+                chatMessagesDiv.innerHTML = '';
+                addMessage(chatMessages[0]);
                 
                 // Focus on input
                 messageInput.focus();
             } catch (error) {
                 console.error('Error starting chat:', error);
-                chatMessages.innerHTML = '<div class="loading" style="color: red;">Error starting chat. Please try again later.</div>';
+                chatMessagesDiv.innerHTML = '<div class="error-message">Error starting chat. Please try again.</div>';
+                messageInput.disabled = false;
+                sendButton.disabled = false;
             }
         });
         
         // Send message
-        sendButton.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-        
         async function sendMessage() {
-            if (!currentSessionId) return;
-            
             const content = messageInput.value.trim();
             if (!content) return;
             
-            // Add user message to chat
-            addMessage({ role: 'user', content }, 'user');
+            const userMessage = { role: 'user', content };
+            addMessage(userMessage);
+            chatMessages.push(userMessage);
             
-            // Clear input
             messageInput.value = '';
+            messageInput.disabled = true;
+            sendButton.disabled = true;
             
             try {
-                // Send message to API
-                const response = await fetch(`${API_URL}/sessions/${currentSessionId}/messages`, {
+                const response = await fetch(`${API_URL}/api/chat/message`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ content })
+                    body: JSON.stringify({
+                        topicId: currentTopicId,
+                        messages: chatMessages,
+                        content
+                    })
                 });
                 
                 if (!response.ok) {
@@ -298,97 +505,34 @@
                 }
                 
                 const result = await response.json();
+                chatMessages = result.messages;
                 
-                // Add bot response to chat
-                addMessage(result.messages[1], 'bot');
-                
-                // Scroll to bottom
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                // Add bot's response
+                const lastMessage = chatMessages[chatMessages.length - 1];
+                addMessage(lastMessage);
             } catch (error) {
                 console.error('Error sending message:', error);
-                addMessage({ 
-                    role: 'assistant',
-                    content: 'すみません、エラーが発生しました。もう一度お試しください。'
-                }, 'bot');
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = 'Error sending message. Please try again.';
+                chatMessagesDiv.appendChild(errorDiv);
+                chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+            } finally {
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                messageInput.focus();
             }
         }
         
-        // View history
-        viewHistoryButton.addEventListener('click', async () => {
-            if (!currentSessionId) return;
-            
-            try {
-                // Get session history
-                const response = await fetch(`${API_URL}/sessions/${currentSessionId}`);
-                
-                if (!response.ok) {
-                    throw new Error('Failed to get history');
-                }
-                
-                const session = await response.json();
-                
-                // Clear chat area and show all messages
-                chatMessages.innerHTML = '';
-                session.messages.forEach(message => {
-                    addMessage(message, message.role === 'user' ? 'user' : 'bot');
-                });
-                
-                // Scroll to bottom
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            } catch (error) {
-                console.error('Error getting history:', error);
-                alert('Error retrieving conversation history');
+        // Send button click
+        sendButton.addEventListener('click', sendMessage);
+        
+        // Enter key press
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
             }
         });
-        
-        // End session
-        endSessionButton.addEventListener('click', async () => {
-            if (!currentSessionId) return;
-            
-            try {
-                await fetch(`${API_URL}/sessions/${currentSessionId}`, {
-                    method: 'DELETE'
-                });
-                
-                currentSessionId = null;
-                
-                // Disable chat controls
-                messageInput.disabled = true;
-                sendButton.disabled = true;
-                viewHistoryButton.disabled = true;
-                endSessionButton.disabled = true;
-                
-                // Show end message
-                chatMessages.innerHTML = '<div class="loading">Chat session ended. Select a topic and start a new chat.</div>';
-            } catch (error) {
-                console.error('Error ending session:', error);
-                alert('Error ending session');
-            }
-        });
-        
-        // Helper to add message to chat
-        function addMessage(message, type) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message-container';
-            
-            const messageContent = document.createElement('div');
-            messageContent.className = `message ${type}-message`;
-            
-            const roleSpan = document.createElement('div');
-            roleSpan.className = 'message-role';
-            roleSpan.textContent = type === 'user' ? 'You:' : 'AI:';
-            
-            const contentP = document.createElement('p');
-            contentP.textContent = message.content;
-            
-            messageContent.appendChild(roleSpan);
-            messageContent.appendChild(contentP);
-            messageDiv.appendChild(messageContent);
-            chatMessages.appendChild(messageDiv);
-            
-            // Scroll to bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
     </script>
 </body>
 </html> 

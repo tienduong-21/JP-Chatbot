@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { SessionService } from '../services/SessionService';
 import { TopicService } from '../services/TopicService';
 import { logger } from '../utils/logger';
-import { CreateSessionDto, SendMessageDto, SessionDto, MessageResponseDto, ErrorResponseDto } from '../dtos';
+import { StartChatDto, SendMessageDto, MessageResponseDto, ErrorResponseDto } from '../dtos';
 
 export class SessionController {
   private sessionService: SessionService;
@@ -14,11 +14,11 @@ export class SessionController {
   }
   
   /**
-   * Create a new session with a topic
+   * Start a new chat with a topic
    */
-  async createSession(req: Request, res: Response): Promise<void> {
+  async startChat(req: Request, res: Response): Promise<void> {
     try {
-      const { topicId } = req.body as CreateSessionDto;
+      const { topicId } = req.body as StartChatDto;
       
       if (!topicId) {
         const errorResponse: ErrorResponseDto = { error: 'Topic ID is required' };
@@ -34,92 +34,45 @@ export class SessionController {
         return;
       }
       
-      const session = await this.sessionService.createSession(topic);
+      const messages = await this.sessionService.startChat(topic);
       
-      const sessionDto: SessionDto = session.toJSON();
-      res.status(201).json(sessionDto);
+      const messageResponse: MessageResponseDto = { messages };
+      res.status(200).json(messageResponse);
     } catch (error) {
-      logger.error('Error in createSession controller:', error);
-      const errorResponse: ErrorResponseDto = { error: 'Failed to create session' };
+      logger.error('Error in startChat controller:', error);
+      const errorResponse: ErrorResponseDto = { error: 'Failed to start chat' };
       res.status(500).json(errorResponse);
     }
   }
   
   /**
-   * Get a session by ID
-   */
-  async getSession(req: Request, res: Response): Promise<void> {
-    try {
-      const { sessionId } = req.params;
-      const session = this.sessionService.getSession(sessionId);
-      
-      if (!session) {
-        const errorResponse: ErrorResponseDto = { error: 'Session not found' };
-        res.status(404).json(errorResponse);
-        return;
-      }
-      
-      const sessionDto: SessionDto = session.toJSON();
-      res.json(sessionDto);
-    } catch (error) {
-      logger.error(`Error in getSession controller for ${req.params.sessionId}:`, error);
-      const errorResponse: ErrorResponseDto = { error: 'Failed to get session' };
-      res.status(500).json(errorResponse);
-    }
-  }
-  
-  /**
-   * Send a message in a session
+   * Send a message and get AI response
    */
   async sendMessage(req: Request, res: Response): Promise<void> {
     try {
-      console.log("sessionId", req.params);
-      console.log("content", req.body);
-      const { sessionId } = req.params;
-      const { content } = req.body as SendMessageDto;
+      const { topicId, messages, content } = req.body as SendMessageDto;
       
-      if (!content) {
-        const errorResponse: ErrorResponseDto = { error: 'Message content is required' };
+      if (!topicId || !content) {
+        const errorResponse: ErrorResponseDto = { error: 'Topic ID and message content are required' };
         res.status(400).json(errorResponse);
         return;
       }
       
-      const messages = await this.sessionService.sendMessage(sessionId, content);
+      const topic = await this.topicService.getTopicByName(topicId);
       
-      const messageResponse: MessageResponseDto = { messages };
-      res.json(messageResponse);
-    } catch (error: unknown) {
-      logger.error(`Error in sendMessage controller for ${req.params.sessionId}:`, error);
-      
-      // Check if error is an object with a message property
-      if (error instanceof Error && error.message === 'Session not found') {
-        const errorResponse: ErrorResponseDto = { error: 'Session not found' };
-        res.status(404).json(errorResponse);
-      } else {
-        const errorResponse: ErrorResponseDto = { error: 'Failed to process message' + error };
-        res.status(500).json(errorResponse);
-      }
-    }
-  }
-  
-  /**
-   * Delete a session
-   */
-  async deleteSession(req: Request, res: Response): Promise<void> {
-    try {
-      const { sessionId } = req.params;
-      const deleted = this.sessionService.deleteSession(sessionId);
-      
-      if (!deleted) {
-        const errorResponse: ErrorResponseDto = { error: 'Session not found' };
+      if (!topic) {
+        const errorResponse: ErrorResponseDto = { error: 'Topic not found' };
         res.status(404).json(errorResponse);
         return;
       }
       
-      res.status(204).send();
+      const newMessages = await this.sessionService.sendMessage(topic, messages || [], content);
+      
+      const messageResponse: MessageResponseDto = { messages: newMessages };
+      res.json(messageResponse);
     } catch (error) {
-      logger.error(`Error in deleteSession controller for ${req.params.sessionId}:`, error);
-      const errorResponse: ErrorResponseDto = { error: 'Failed to delete session' };
+      logger.error('Error in sendMessage controller:', error);
+      const errorResponse: ErrorResponseDto = { error: 'Failed to process message' };
       res.status(500).json(errorResponse);
     }
   }

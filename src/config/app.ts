@@ -1,6 +1,7 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
+import rateLimit from 'express-rate-limit';
 import { createTopicRoutes } from '../routes/topicRoutes';
 import { createSessionRoutes } from '../routes/sessionRoutes';
 import { createFileRoutes } from '../routes/fileRoutes';
@@ -12,12 +13,27 @@ import { TopicController } from '../controllers/TopicController';
 import { SessionController } from '../controllers/SessionController';
 import { FileUploadController } from '../controllers/FileUploadController';
 import { logger } from '../utils/logger';
+import multer from 'multer';
 
 export function createApp(apiKey: string, topicsDir: string = 'public/topics'): Express {
   const app = express();
   
+  // Configure CORS
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
+  app.use(cors({
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
+  
+  // Configure rate limiting
+  const limiter = rateLimit({
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000'),
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100')
+  });
+  app.use(limiter);
+  
   // Configure middleware
-  app.use(cors());
   app.use(express.json());
   app.use(express.static('public'));
   
@@ -40,8 +56,35 @@ export function createApp(apiKey: string, topicsDir: string = 'public/topics'): 
   
   // Configure routes
   app.use('/api/topics', createTopicRoutes(topicController));
-  app.use('/api/sessions', createSessionRoutes(sessionController));
+  app.use('/api/chat', createSessionRoutes(sessionController));
   app.use('/api/files', createFileRoutes(fileUploadController));
+  
+  // Configure file upload
+  const uploadDir = process.env.UPLOAD_DIR || 'uploads';
+  const upload = multer({ 
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, uploadDir);
+      },
+      filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+      }
+    }),
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+  });
+  
+  // Add backward compatibility route for file uploads
+  app.post('/api/upload/topic', upload.single('file'), (req, res) => {
+    if (req.file) {
+      req.file.fieldname = 'topic';
+      fileUploadController.uploadTopicFile(req, res);
+    } else {
+      const errorResponse = { error: 'No file uploaded' };
+      res.status(400).json(errorResponse);
+    }
+  });
   
   // Error handling middleware
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

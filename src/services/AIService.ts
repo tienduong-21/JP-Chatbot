@@ -16,41 +16,80 @@ export class AIService {
   /**
    * Start a new chat session with the selected topic
    */
-  async startChat(topic: Topic): Promise<string> {
+  async startChat(topic: Topic): Promise<ChatMessage> {
     try {
-      const response = await this.ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: `あなたは日本語で会話できるAIアシスタントです。
-以下のトピックに関する情報を基に、ユーザーからの質問に答えてください。
-回答は丁寧で親しみやすい日本語で行ってください。
-トピック：${topic.name}
+      const prompt = `You are a bilingual AI assistant that can communicate in both English and Japanese.
+Based on the following English topic information, please respond to user questions in the same language they use.
+If the user writes in English, respond in English. If they write in Japanese, respond in Japanese.
+Topic: ${topic.name}
 
-情報：
+English Information:
 ${topic.content}
 
-もしわからない質問があれば、「すみません、その質問についての情報がありません」と答えてください。
-回答は簡潔にまとめ、文字数は300字以内を目安にしてください。
+Please follow these guidelines:
+1. Detect the user's language and respond in the same language
+2. For English responses:
+   - Use clear, professional English
+   - Keep explanations concise and easy to understand
+   - Include technical terms when relevant
+   - Use markdown formatting for better readability:
+     * Use **bold** for emphasis
+     * Use *italic* for secondary emphasis
+     * Use \`code\` for technical terms
+     * Use \`\`\` for code blocks
+     * Use > for quotes
+     * Use - or * for lists
+     * Use # for headings
+3. For Japanese responses:
+   - Use polite, natural Japanese (です/ます form)
+   - Translate English content naturally
+   - Include English terms in parentheses when important
+   - Use markdown formatting for better readability:
+     * Use **太字** for emphasis
+     * Use *斜体* for secondary emphasis
+     * Use \`コード\` for technical terms
+     * Use \`\`\` for code blocks
+     * Use > for quotes
+     * Use - or * for lists
+     * Use # for headings
+4. If you don't know the answer:
+   - English: "I'm sorry, I don't have information about that."
+   - Japanese: "すみません、その質問についての情報がありません"
+5. Keep responses concise, aiming for 300 characters or less
 
-まず、ユーザーに対して挨拶と、このトピックについて何を知りたいか聞いてください。`
+First, greet the user in both languages and ask what they would like to know about this topic.`;
+
+      const response = await this.ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: prompt
       });
       
-      return response.text || "チャットを開始します。お気軽に質問してください。";
+      return {
+        role: 'assistant',
+        content: response.text || "Hello! こんにちは！\nHow can I help you today? どのようなことについて知りたいですか？"
+      };
     } catch (error) {
       logger.error('Error starting chat:', error);
-      return 'すみません、チャットを開始できませんでした。もう一度お試しください。';
+      return {
+        role: 'assistant',
+        content: 'Sorry, I could not start the chat. Please try again.\nすみません、チャットを開始できませんでした。もう一度お試しください。'
+      };
     }
   }
 
   /**
    * Send a message to the AI and get a response, preserving conversation history
    */
-  async sendMessage(topic: Topic, messages: ChatMessage[]): Promise<string> {
+  async sendMessage(topic: Topic, messages: ChatMessage[]): Promise<ChatMessage> {
     try {
       // Get the latest user message
       const latestUserMessage = messages.filter(msg => msg.role === 'user').pop();
       
       if (!latestUserMessage) {
-        return 'メッセージが見つかりませんでした。';
+        return {
+          role: 'assistant',
+          content: 'メッセージが見つかりませんでした。'
+        };
       }
 
       // Format the chat history for the AI
@@ -62,10 +101,16 @@ ${topic.content}
         contents: formattedHistory
       });
       
-      return response.text || "すみません、回答を生成できませんでした。";
+      return {
+        role: 'assistant',
+        content: response.text || "すみません、回答を生成できませんでした。"
+      };
     } catch (error) {
       logger.error('Error sending message to AI:', error);
-      return 'すみません、エラーが発生しました。もう一度お試しください。';
+      return {
+        role: 'assistant',
+        content: 'すみません、エラーが発生しました。もう一度お試しください。'
+      };
     }
   }
 
@@ -74,28 +119,50 @@ ${topic.content}
    */
   private formatChatHistory(messages: ChatMessage[], topic: Topic): string {
     // Context to give the AI about its role and the topic
-    const systemContext = `あなたは日本語で会話できるAIアシスタントです。
-以下のトピックに関する情報を基に、ユーザーからの質問に答えてください。
-回答は丁寧で親しみやすい日本語で行ってください。
-トピック：${topic.name}
+    const systemContext = `You are a bilingual AI assistant that can communicate in both English and Japanese.
+Based on the following English topic information, please respond to user questions in the same language they use.
+If the user writes in English, respond in English. If they write in Japanese, respond in Japanese.
+Topic: ${topic.name}
 
-情報：
+English Information:
 ${topic.content}
 
-もしわからない質問があれば、「すみません、その質問についての情報がありません」と答えてください。
-回答は簡潔にまとめ、文字数は300字以内を目安にしてください。
+Please follow these guidelines:
+1. Detect the user's language and respond in the same language
+2. For English responses:
+   - Use clear, professional English
+   - Keep explanations concise and easy to understand
+   - Include technical terms when relevant
+   - Use markdown formatting for better readability:
+     * Use **bold** for emphasis
+     * Use *italic* for secondary emphasis
+     * Use \`code\` for technical terms
+     * Use \`\`\` for code blocks
+     * Use > for quotes
+     * Use - or * for lists
+     * Use # for headings
+3. For Japanese responses:
+   - Use polite, natural Japanese (です/ます form)
+   - Translate English content naturally
+   - Include English terms in parentheses when important
+   - Use markdown formatting for better readability:
+     * Use **太字** for emphasis
+     * Use *斜体* for secondary emphasis
+     * Use \`コード\` for technical terms
+     * Use \`\`\` for code blocks
+     * Use > for quotes
+     * Use - or * for lists
+     * Use # for headings
+4. If you don't know the answer:
+   - English: "I'm sorry, I don't have information about that."
+   - Japanese: "すみません、その質問についての情報がありません"
+5. Keep responses concise, aiming for 300 characters or less
 
-以下は今までの会話履歴です。会話の文脈を理解し、最後のユーザーの質問に答えてください。
-`;
+Previous conversation:
+${messages.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
 
-    // Format the conversation history
-    let conversationHistory = "";
-    messages.forEach(msg => {
-      const role = msg.role === 'user' ? 'ユーザー' : 'アシスタント';
-      conversationHistory += `${role}: ${msg.content}\n\n`;
-    });
+Please respond to the latest message.`;
 
-    // Combine system context and conversation history
-    return systemContext + "\n\n" + conversationHistory;
+    return systemContext;
   }
 } 
