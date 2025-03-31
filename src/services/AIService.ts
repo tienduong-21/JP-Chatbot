@@ -55,7 +55,6 @@ Please follow these guidelines:
 4. If you don't know the answer:
    - English: "I'm sorry, I don't have information about that."
    - Japanese: "すみません、その質問についての情報がありません"
-5. Keep responses concise, aiming for 300 characters or less
 
 First, greet the user in both languages and ask what they would like to know about this topic.`;
 

@@ -38,7 +38,9 @@
     "express-rate-limit": "^7.2.0",
     "multer": "^1.4.5-lts.2",
     "node-fetch": "^2.7.0",
-    "readline-sync": "^1.4.10"
+    "readline-sync": "^1.4.10",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -48,6 +50,8 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^20.17.28",
     "@types/readline-sync": "^1.4.8",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^7.1.0",
     "@typescript-eslint/parser": "^7.1.0",
     "eslint": "^8.57.0",

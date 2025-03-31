@@ -2,6 +2,8 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './swagger';
 import { createTopicRoutes } from '../routes/topicRoutes';
 import { createSessionRoutes } from '../routes/sessionRoutes';
 import { createFileRoutes } from '../routes/fileRoutes';
@@ -58,6 +60,9 @@ export function createApp(apiKey: string, topicsDir: string = 'public/topics'): 
   app.use('/api/topics', createTopicRoutes(topicController));
   app.use('/api/chat', createSessionRoutes(sessionController));
   app.use('/api/files', createFileRoutes(fileUploadController));
+  
+  // Swagger UI
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   
   // Configure file upload
   const uploadDir = process.env.UPLOAD_DIR || 'uploads';
